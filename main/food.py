@@ -137,7 +137,7 @@ if 'makanan_terdeteksi' in st.session_state:
 
 # Footer
 st.markdown("---")
-st.caption("Diberdayakan oleh Llama 🦙"")
+st.caption("Diberdayakan oleh Llama 🦙")
 
 # Sidebar dengan informasi tambahan
 with st.sidebar:
