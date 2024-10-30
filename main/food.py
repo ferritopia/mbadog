@@ -7,7 +7,7 @@ import base64
 
 # Konfigurasi halaman
 st.set_page_config(
-    page_title="Analisis Gizi Makanan",
+    page_title="Mbadog: Cek mikronutrisi makanan",
     page_icon="🥗",
     layout="centered"
 )
@@ -81,7 +81,7 @@ def dapatkan_info_gizi(nama_makanan, gram):
     return info_gizi
 
 # Aplikasi utama
-st.title("🥗 Analisis Gizi Makanan")
+st.title("🥗 Mbadog: Cek dulu makanan mu!")
 st.write("Unggah foto makanan atau ambil foto untuk menganalisis kandungan mikronutriennya")
 
 # Bagian input gambar
