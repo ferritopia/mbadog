@@ -44,7 +44,7 @@ def analisis_gambar(image_base64):
                 ]
             }
         ],
-        temperature=0.3,  # Menurunkan temperature untuk hasil yang lebih konsisten
+        temperature=0.3,
         max_tokens=1024,
         top_p=1,
         stream=False,
@@ -88,7 +88,7 @@ def dapatkan_info_gizi(nama_makanan, gram):
                 "content": prompt
             }
         ],
-        temperature=0.3,  # Menurunkan temperature untuk hasil yang lebih konsisten
+        temperature=0.3,
         max_tokens=1024,
         top_p=1,
         stream=True,
@@ -132,8 +132,8 @@ if 'image' in locals():
                 makanan_terdeteksi = analisis_gambar(img_str)
                 st.session_state['makanan_terdeteksi'] = makanan_terdeteksi
             except Exception as e:
-                st.error(f"Terjadi kesalahan saat menganalisis gambar: {str(e)}")
-                st.error("Detail error untuk debugging:", e)
+                st.error("Terjadi kesalahan saat menganalisis gambar.")
+                st.error(f"Detail error: {str(e)}")
 
 if 'makanan_terdeteksi' in st.session_state:
     st.subheader("Makanan yang Terdeteksi")
@@ -176,16 +176,12 @@ if 'makanan_terdeteksi' in st.session_state:
                 with st.spinner(f"Menganalisis {makanan}..."):
                     try:
                         hasil_gizi = dapatkan_info_gizi(makanan, berat)
-                        # Menggunakan expander untuk setiap makanan
                         with st.expander(f"💠 {makanan} ({berat}g)", expanded=True):
                             st.markdown(hasil_gizi)
                     except Exception as e:
-                        st.error(f"Terjadi kesalahan saat menganalisis {makanan}: {str(e)}")
-            
-            # Menambahkan tombol untuk menyimpan hasil (opsional)
-            if st.button("Simpan Hasil Analisis"):
-                # Di sini bisa ditambahkan logika untuk menyimpan hasil
-                st.success("Hasil analisis berhasil disimpan!")
+                        st.error(f"Gagal menganalisis {makanan}")
+                        st.error(f"Detail error: {str(e)}")
+
 # Footer
 st.markdown("---")
 st.caption("Diberdayakan oleh Llama 🦙")
