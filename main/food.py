@@ -31,7 +31,7 @@ def analisis_gambar(image_base64):
                 "content": [
                     {
                         "type": "text", 
-                        "text": "Berikan daftar makanan yang ada dalam gambar ini, dalam format sederhana. Langsung sebutkan makanannya saja tanpa kata pengantar atau kalimat tambahan"
+                        "text": "Berikan daftar makanan yang terdeteksi dalam format sederhana. Langsung sebutkan makanannya saja tanpa kata pengantar atau kalimat tambahan. Format jawaban yang diinginkan seperti ini:makanan 1, makanan 2, makanan 3. dan seterusnya"
                     },
                     {
                         "type": "image_url",
