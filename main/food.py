@@ -28,16 +28,16 @@ def analisis_gambar(image_base64):
         messages=[
             {
                 "role": "user",
-                "content": {
-                    "type": "image_url",
-                    "image_url": {
-                        "url": f"data:image/jpeg;base64,{image_base64}"
+                "content": [
+                    {"type": "text", "text": "Apa saja makanan yang ada dalam gambar ini? Berikan jawaban yang sederhana dan jelas, sebutkan nama makanannya saja."},
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:image/jpeg;base64,{image_base64}",
+                            "detail": "low"
+                        }
                     }
-                }
-            },
-            {
-                "role": "user",
-                "content": "Apa saja makanan yang ada dalam gambar ini? Berikan jawaban yang sederhana dan jelas, sebutkan nama makanannya saja."
+                ]
             }
         ],
         temperature=0.5,
@@ -111,6 +111,7 @@ if 'image' in locals():
                 st.session_state['makanan_terdeteksi'] = hasil_deteksi
             except Exception as e:
                 st.error(f"Terjadi kesalahan saat menganalisis gambar: {str(e)}")
+                st.error("Detail error untuk debugging:", e)
 
 if 'makanan_terdeteksi' in st.session_state:
     st.subheader("Makanan yang Terdeteksi")
@@ -136,7 +137,7 @@ if 'makanan_terdeteksi' in st.session_state:
 
 # Footer
 st.markdown("---")
-st.caption("Diberdayakan oleh Llama 🦙")
+st.caption("Diberdayakan oleh Llama 🦙"")
 
 # Sidebar dengan informasi tambahan
 with st.sidebar:
