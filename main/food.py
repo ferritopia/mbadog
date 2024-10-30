@@ -29,7 +29,7 @@ def analisis_gambar(image_base64):
             {
                 "role": "user",
                 "content": [
-                    {"type": "text", "text": "Apa saja makanan yang ada dalam gambar ini? Berikan jawaban yang sederhana dan jelas, sebutkan nama makanannya saja."},
+                    {"type": "text", "text": "Apa saja makanan yang ada dalam gambar ini? Berikan daftar makanan dalam format yang terpisah dengan koma."},
                     {
                         "type": "image_url",
                         "image_url": {
@@ -45,13 +45,15 @@ def analisis_gambar(image_base64):
         top_p=1,
         stream=False,
     )
-    return completion.choices[0].message.content
+    # Memisahkan hasil deteksi menjadi list makanan
+    makanan_list = [item.strip() for item in completion.choices[0].message.content.split(',')]
+    return makanan_list
 
 def dapatkan_info_gizi(nama_makanan, gram):
     """Dapatkan informasi gizi menggunakan model teks Groq"""
     prompt = f"""Analisis mikronutrien dalam {gram}g {nama_makanan}. 
     Berikan juga informasi kalori, lemak, protein, karbohidrat nya dalam bentuk tabel jika memungkinkan.
-     Jawaban HARUS dalam Bahasa Indonesia."""
+    Jawaban HARUS dalam Bahasa Indonesia."""
 
     info_gizi = ""
     stream = client.chat.completions.create(
@@ -107,33 +109,54 @@ if 'image' in locals():
                 img_str = base64.b64encode(buffered.getvalue()).decode()
                 
                 # Dapatkan hasil deteksi makanan
-                hasil_deteksi = analisis_gambar(img_str)
-                st.session_state['makanan_terdeteksi'] = hasil_deteksi
+                makanan_terdeteksi = analisis_gambar(img_str)
+                st.session_state['makanan_terdeteksi'] = makanan_terdeteksi
             except Exception as e:
                 st.error(f"Terjadi kesalahan saat menganalisis gambar: {str(e)}")
                 st.error("Detail error untuk debugging:", e)
 
 if 'makanan_terdeteksi' in st.session_state:
     st.subheader("Makanan yang Terdeteksi")
-    st.write(st.session_state['makanan_terdeteksi'])
     
-    # Memungkinkan koreksi nama makanan
-    makanan_terkoreksi = st.text_input("Koreksi nama makanan jika diperlukan:", 
-                                      value=st.session_state['makanan_terdeteksi'])
+    # Dictionary untuk menyimpan makanan dan gramasinya
+    if 'makanan_data' not in st.session_state:
+        st.session_state['makanan_data'] = {}
     
-    # Input berat
-    berat_gram = st.number_input("Masukkan berat (gram):", 
-                                min_value=1, max_value=1000, value=100)
-    
-    # Tombol analisis gizi
-    if st.button("Analisis Kandungan Gizi"):
-        with st.spinner("Sedang menganalisis kandungan gizi..."):
-            try:
-                hasil_gizi = dapatkan_info_gizi(makanan_terkoreksi, berat_gram)
-                st.subheader(f"Analisis Mikronutrien untuk {berat_gram}g {makanan_terkoreksi}")
-                st.markdown(hasil_gizi)
-            except Exception as e:
-                st.error(f"Terjadi kesalahan saat menganalisis kandungan gizi: {str(e)}")
+    # Form untuk setiap makanan yang terdeteksi
+    with st.form(key='makanan_form'):
+        for idx, makanan in enumerate(st.session_state['makanan_terdeteksi']):
+            col1, col2 = st.columns([3, 1])
+            
+            with col1:
+                makanan_terkoreksi = st.text_input(
+                    f"Makanan {idx + 1}:",
+                    value=makanan,
+                    key=f"makanan_{idx}"
+                )
+            
+            with col2:
+                berat_gram = st.number_input(
+                    f"Berat (g):",
+                    min_value=1,
+                    max_value=1000,
+                    value=100,
+                    key=f"berat_{idx}"
+                )
+            
+            st.session_state['makanan_data'][makanan_terkoreksi] = berat_gram
+        
+        submit_button = st.form_submit_button("Analisis Kandungan Gizi")
+        
+        if submit_button:
+            for makanan, berat in st.session_state['makanan_data'].items():
+                with st.spinner(f"Menganalisis kandungan gizi {makanan}..."):
+                    try:
+                        hasil_gizi = dapatkan_info_gizi(makanan, berat)
+                        st.subheader(f"Analisis Mikronutrien untuk {berat}g {makanan}")
+                        st.markdown(hasil_gizi)
+                        st.markdown("---")
+                    except Exception as e:
+                        st.error(f"Terjadi kesalahan saat menganalisis kandungan gizi {makanan}: {str(e)}")
 
 # Footer
 st.markdown("---")
@@ -152,21 +175,21 @@ with st.sidebar:
        - Tunggu hasil analisis AI
     
     3. **Koreksi Jika Perlu**
-       - Periksa hasil deteksi
+       - Periksa hasil deteksi untuk setiap makanan
        - Koreksi nama makanan jika diperlukan
     
     4. **Masukkan Berat**
-       - Tentukan berat makanan dalam gram
+       - Tentukan berat untuk setiap makanan dalam gram
     
     5. **Analisis Gizi**
        - Klik 'Analisis Kandungan Gizi'
-       - Lihat hasil analisis mikronutrien
+       - Lihat hasil analisis mikronutrien untuk setiap makanan
     """)
     
     st.markdown("---")
     st.markdown("""
     ### Catatan
     - Pastikan gambar jelas dan fokus
-    - Satu gambar untuk satu jenis makanan
-    - Berat dalam gram harus akurat
+    - Berat dalam gram harus akurat untuk setiap makanan
+    - Hasil analisis akan ditampilkan untuk setiap makanan secara terpisah
     """)
