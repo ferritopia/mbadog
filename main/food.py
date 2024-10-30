@@ -4,6 +4,7 @@ import os
 from PIL import Image
 import io
 import base64
+import pandas as pd
 
 # Konfigurasi halaman
 st.set_page_config(
@@ -31,7 +32,7 @@ def analisis_gambar(image_base64):
                 "content": [
                     {
                         "type": "text", 
-                        "text": "Berikan daftar makanan yang terdeteksi dalam format sederhana. Langsung sebutkan makanannya saja tanpa kata pengantar atau kalimat tambahan. Format jawaban yang diinginkan seperti ini:makanan 1, makanan 2, makanan 3. dan seterusnya"
+                        "text": "Identifikasi makanan dalam gambar ini dan berikan daftar dalam format:\nmakanan 1: [nama makanan]\nmakanan 2: [nama makanan]"
                     },
                     {
                         "type": "image_url",
@@ -51,6 +52,9 @@ def analisis_gambar(image_base64):
     
     response = completion.choices[0].message.content
     
+    # Debug: Print raw response
+    print("Raw response:", response)
+    
     # Parsing hasil deteksi ke dalam list
     makanan_list = []
     for line in response.split('\n'):
@@ -59,20 +63,20 @@ def analisis_gambar(image_base64):
             if makanan:  # Hanya tambahkan jika ada makanan
                 makanan_list.append(makanan)
     
+    # Debug: Print parsed list
+    print("Parsed list:", makanan_list)
     return makanan_list
 
 def dapatkan_info_gizi(nama_makanan, gram):
     """Dapatkan informasi gizi menggunakan model teks Groq"""
-    prompt = f"""Berikan analisis nutrisi untuk {gram}g {nama_makanan}.
+    prompt = f"""Analisis nutrisi untuk {gram}g {nama_makanan}.
+    Berikan hasil dalam format tabel dengan kolom berikut:
+    Makanan | Gram | Kalori (kkal) | Protein (g) | Karbohidrat (g) | Lemak (g) | Nutrisi Penting
     
-    Format yang diinginkan:
-    1. Kalori: [jumlah] kkal
-    2. Protein: [jumlah]g
-    3. Lemak: [jumlah]g
-    4. Karbohidrat: [jumlah]g
-    5. Vitamin dan mineral utama
+    Contoh format:
+    nasi | 100 | 130 | 2.7 | 28.6 | 0.3 | Fosfor, Mangan, Vitamin B6
     
-    Berikan dalam format yang singkat dan jelas dalam Bahasa Indonesia."""
+    Berikan hanya satu baris data tanpa header, separator, atau informasi tambahan."""
 
     info_gizi = ""
     stream = client.chat.completions.create(
@@ -80,7 +84,7 @@ def dapatkan_info_gizi(nama_makanan, gram):
         messages=[
             {
                 "role": "system",
-                "content": "Anda adalah ahli gizi. Berikan informasi nutrisi secara langsung dan akurat sesuai format yang diminta, tanpa tambahan kalimat atau penjelasan yang tidak perlu."
+                "content": "Anda adalah ahli gizi yang memberikan informasi dalam format tabel yang diminta. Berikan hanya data tanpa kalimat tambahan."
             },
             {
                 "role": "user",
@@ -97,7 +101,7 @@ def dapatkan_info_gizi(nama_makanan, gram):
         if chunk.choices[0].delta.content:
             info_gizi += chunk.choices[0].delta.content
     
-    return info_gizi
+    return info_gizi.strip()
 
 # Aplikasi utama
 st.title("🥗 Mbadog: Cek dulu makanan mu!")
@@ -135,15 +139,19 @@ if 'image' in locals():
                 st.error(f"Detail error: {str(e)}")
 
 if 'makanan_terdeteksi' in st.session_state:
-    st.subheader("Makanan yang Terdeteksi")
+    st.subheader("📋 Hasil Deteksi Makanan")
     
     # Tampilkan hasil deteksi dalam format yang diinginkan
     for idx, makanan in enumerate(st.session_state['makanan_terdeteksi'], 1):
         st.write(f"makanan {idx}: {makanan}")
     
+    st.subheader("✏️ Perbaiki Deteksi jika Tidak Tepat")
+    st.write("Silakan periksa dan sesuaikan nama makanan serta beratnya jika diperlukan.")
+    
     # Form untuk setiap makanan yang terdeteksi
     with st.form(key='makanan_form'):
         makanan_data = {}
+        all_gizi_data = []
         
         for idx, makanan in enumerate(st.session_state['makanan_terdeteksi']):
             col1, col2 = st.columns([3, 1])
@@ -169,17 +177,28 @@ if 'makanan_terdeteksi' in st.session_state:
         submit_button = st.form_submit_button("Analisis Kandungan Gizi")
         
         if submit_button:
-            st.subheader("Hasil Analisis Nutrisi")
+            st.subheader("📊 Hasil Analisis Nutrisi")
+            
+            # Buat header tabel
+            columns = ["Makanan", "Gram", "Kalori (kkal)", "Protein (g)", "Karbohidrat (g)", "Lemak (g)", "Nutrisi Penting"]
+            
+            # Kumpulkan data untuk tabel
+            table_data = []
             
             for makanan, berat in makanan_data.items():
                 with st.spinner(f"Menganalisis {makanan}..."):
                     try:
                         hasil_gizi = dapatkan_info_gizi(makanan, berat)
-                        with st.expander(f"💠 {makanan} ({berat}g)", expanded=True):
-                            st.markdown(hasil_gizi)
+                        # Tambahkan data ke tabel
+                        table_data.append(hasil_gizi.split('|'))
                     except Exception as e:
                         st.error(f"Gagal menganalisis {makanan}")
                         st.error(f"Detail error: {str(e)}")
+            
+            # Tampilkan tabel
+            if table_data:
+                df = pd.DataFrame(table_data, columns=columns)
+                st.dataframe(df, use_container_width=True)
 
 # Footer
 st.markdown("---")
