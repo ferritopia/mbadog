@@ -28,18 +28,16 @@ def analisis_gambar(image_base64):
         messages=[
             {
                 "role": "user",
-                "content": [
-                    {
-                        "type": "text",
-                        "text": "Apa saja makanan yang ada dalam gambar ini? Berikan jawaban yang sederhana dan jelas, sebutkan nama makanannya saja."
-                    },
-                    {
-                        "type": "image",
-                        "image_url": {
-                            "url": f"data:image/jpeg;base64,{image_base64}"
-                        }
+                "content": {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/jpeg;base64,{image_base64}"
                     }
-                ]
+                }
+            },
+            {
+                "role": "user",
+                "content": "Apa saja makanan yang ada dalam gambar ini? Berikan jawaban yang sederhana dan jelas, sebutkan nama makanannya saja."
             }
         ],
         temperature=0.5,
@@ -53,7 +51,7 @@ def dapatkan_info_gizi(nama_makanan, gram):
     """Dapatkan informasi gizi menggunakan model teks Groq"""
     prompt = f"""Analisis mikronutrien dalam {gram}g {nama_makanan}. 
     Berikan juga informasi kalori, lemak, protein, karbohidrat nya dalam bentuk tabel jika memungkinkan.
-    Jawaban HARUS dalam Bahasa Indonesia."""
+     Jawaban HARUS dalam Bahasa Indonesia."""
 
     info_gizi = ""
     stream = client.chat.completions.create(
@@ -102,14 +100,17 @@ else:
 if 'image' in locals():
     if st.button("Deteksi Makanan"):
         with st.spinner("Sedang menganalisis gambar..."):
-            # Konversi gambar ke base64
-            buffered = io.BytesIO()
-            image.save(buffered, format="JPEG")
-            img_str = base64.b64encode(buffered.getvalue()).decode()
-            
-            # Dapatkan hasil deteksi makanan
-            hasil_deteksi = analisis_gambar(img_str)
-            st.session_state['makanan_terdeteksi'] = hasil_deteksi
+            try:
+                # Konversi gambar ke base64
+                buffered = io.BytesIO()
+                image.save(buffered, format="JPEG")
+                img_str = base64.b64encode(buffered.getvalue()).decode()
+                
+                # Dapatkan hasil deteksi makanan
+                hasil_deteksi = analisis_gambar(img_str)
+                st.session_state['makanan_terdeteksi'] = hasil_deteksi
+            except Exception as e:
+                st.error(f"Terjadi kesalahan saat menganalisis gambar: {str(e)}")
 
 if 'makanan_terdeteksi' in st.session_state:
     st.subheader("Makanan yang Terdeteksi")
@@ -126,9 +127,12 @@ if 'makanan_terdeteksi' in st.session_state:
     # Tombol analisis gizi
     if st.button("Analisis Kandungan Gizi"):
         with st.spinner("Sedang menganalisis kandungan gizi..."):
-            hasil_gizi = dapatkan_info_gizi(makanan_terkoreksi, berat_gram)
-            st.subheader(f"Analisis Mikronutrien untuk {berat_gram}g {makanan_terkoreksi}")
-            st.markdown(hasil_gizi)
+            try:
+                hasil_gizi = dapatkan_info_gizi(makanan_terkoreksi, berat_gram)
+                st.subheader(f"Analisis Mikronutrien untuk {berat_gram}g {makanan_terkoreksi}")
+                st.markdown(hasil_gizi)
+            except Exception as e:
+                st.error(f"Terjadi kesalahan saat menganalisis kandungan gizi: {str(e)}")
 
 # Footer
 st.markdown("---")
