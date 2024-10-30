@@ -5,6 +5,7 @@ from PIL import Image
 import io
 import base64
 import pandas as pd
+import logging
 
 # Konfigurasi halaman
 st.set_page_config(
@@ -22,50 +23,71 @@ except:
 os.environ["GROQ_API_KEY"] = GROQ_API_KEY
 client = Groq()
 
+logging.basicConfig(level=logging.DEBUG)
+
 def analisis_gambar(image_base64):
     """Analisis makanan dalam gambar menggunakan model vision Groq"""
-    completion = client.chat.completions.create(
-        model="llama-3.2-90b-vision-preview",
-        messages=[
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "text", 
-                        "text": "Identifikasi makanan dalam gambar ini dan berikan daftar dalam format:\nmakanan 1: [nama makanan]\nmakanan 2: [nama makanan]"
-                    },
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": f"data:image/jpeg;base64,{image_base64}",
-                            "detail": "low"
+    try:
+        # Debug log untuk memastikan fungsi dipanggil
+        logging.debug("Memulai analisis gambar...")
+        
+        completion = client.chat.completions.create(
+            model="llama-3.2-90b-vision-preview",
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text", 
+                            "text": "Apa saja makanan yang ada dalam gambar ini? Berikan dalam format sederhana:\nmakanan 1: [nama makanan]"
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{image_base64}",
+                                "detail": "low"
+                            }
                         }
-                    }
-                ]
-            }
-        ],
-        temperature=0.3,
-        max_tokens=1024,
-        top_p=1,
-        stream=False,
-    )
-    
-    response = completion.choices[0].message.content
-    
-    # Debug: Print raw response
-    print("Raw response:", response)
-    
-    # Parsing hasil deteksi ke dalam list
-    makanan_list = []
-    for line in response.split('\n'):
-        if ':' in line:
-            makanan = line.split(':')[1].strip()
-            if makanan:  # Hanya tambahkan jika ada makanan
-                makanan_list.append(makanan)
-    
-    # Debug: Print parsed list
-    print("Parsed list:", makanan_list)
-    return makanan_list
+                    ]
+                }
+            ],
+            temperature=0.3,
+            max_tokens=1024,
+            top_p=1,
+            stream=False,
+        )
+        
+        # Debug log untuk response
+        response = completion.choices[0].message.content
+        logging.debug(f"Raw response from model: {response}")
+        
+        # Parsing hasil deteksi ke dalam list dengan penanganan error yang lebih baik
+        makanan_list = []
+        if response:
+            lines = response.split('\n')
+            for line in lines:
+                # Debug log untuk setiap baris
+                logging.debug(f"Processing line: {line}")
+                
+                if ':' in line:
+                    # Ekstrak nama makanan setelah ':'
+                    makanan = line.split(':', 1)[1].strip()
+                    if makanan:
+                        makanan_list.append(makanan)
+                        logging.debug(f"Added food item: {makanan}")
+        
+        # Debug log untuk hasil akhir
+        logging.debug(f"Final food list: {makanan_list}")
+        
+        # Jika tidak ada makanan terdeteksi, raise exception
+        if not makanan_list:
+            raise ValueError("Tidak ada makanan yang terdeteksi dalam gambar")
+            
+        return makanan_list
+        
+    except Exception as e:
+        logging.error(f"Error dalam analisis_gambar: {str(e)}")
+        raise e
 
 def dapatkan_info_gizi(nama_makanan, gram):
     """Dapatkan informasi gizi menggunakan model teks Groq"""
@@ -131,12 +153,23 @@ if 'image' in locals():
                 image.save(buffered, format="JPEG")
                 img_str = base64.b64encode(buffered.getvalue()).decode()
                 
+                # Debug log untuk base64 image (partial)
+                logging.debug(f"Base64 image (first 100 chars): {img_str[:100]}...")
+                
                 # Dapatkan hasil deteksi makanan
                 makanan_terdeteksi = analisis_gambar(img_str)
-                st.session_state['makanan_terdeteksi'] = makanan_terdeteksi
+                
+                # Tampilkan hasil deteksi langsung
+                if makanan_terdeteksi:
+                    st.success("Berhasil mendeteksi makanan!")
+                    st.session_state['makanan_terdeteksi'] = makanan_terdeteksi
+                else:
+                    st.warning("Tidak ada makanan yang terdeteksi dalam gambar")
+                    
             except Exception as e:
                 st.error("Terjadi kesalahan saat menganalisis gambar.")
                 st.error(f"Detail error: {str(e)}")
+                logging.error(f"Full error details: {str(e)}", exc_info=True)
 
 if 'makanan_terdeteksi' in st.session_state:
     st.subheader("📋 Hasil Deteksi Makanan")
