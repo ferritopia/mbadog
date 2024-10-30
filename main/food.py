@@ -27,13 +27,12 @@ def analisis_gambar(image_base64):
         model="llama-3.2-90b-vision-preview",
         messages=[
             {
-                "role": "system",
-                "content": "Berikan daftar makanan yang terdeteksi dalam format sederhana. Langsung sebutkan makanannya saja tanpa kata pengantar atau kalimat tambahan. Contoh format jawaban yang diinginkan:\nmakanan 1: nasi\nmakanan 2: ayam goreng\nmakanan 3: sayur bayam"
-            },
-            {
                 "role": "user",
                 "content": [
-                    {"type": "text", "text": "Apa saja makanan yang ada dalam gambar ini? Berikan dalam format sederhana, langsung sebutkan makanannya saja."},
+                    {
+                        "type": "text", 
+                        "text": "Berikan daftar makanan yang terdeteksi dalam format sederhana. Langsung sebutkan makanannya saja tanpa kata pengantar atau kalimat tambahan. Format jawaban yang diinginkan:\nmakanan 1: nasi\nmakanan 2: ayam goreng\nmakanan 3: sayur bayam"
+                    },
                     {
                         "type": "image_url",
                         "image_url": {
